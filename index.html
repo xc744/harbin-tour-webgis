@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>哈尔滨典型文旅游线导览与服务设施查询平台</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      background: #edf5f7;
+      color: #172033;
+    }
+
+    button {
+      font-family: inherit;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 370px;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .map-wrap {
+      position: relative;
+      min-width: 0;
+      height: 100%;
+      background: #dbeaf0;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .title-card {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      z-index: 650;
+      width: min(480px, calc(100% - 36px));
+      padding: 18px 20px;
+      border: 1px solid rgba(210, 226, 232, 0.9);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(10px);
+    }
+
+    .title-card h1 {
+      margin: 0;
+      color: #0f2f47;
+      font-size: 22px;
+      line-height: 1.25;
+      font-weight: 760;
+    }
+
+    .title-card p {
+      display: -webkit-box;
+      margin: 8px 0 0;
+      overflow: hidden;
+      color: #516273;
+      font-size: 13px;
+      line-height: 1.55;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .map-toolbar {
+      position: absolute;
+      top: 174px;
+      left: 18px;
+      z-index: 640;
+      width: min(480px, calc(100% - 36px));
+      border: 1px solid rgba(210, 226, 232, 0.92);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    .toolbar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 11px 7px;
+      color: #0f2f47;
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .toolbar-toggle {
+      min-height: 26px;
+      padding: 4px 9px;
+      border: 1px solid #d8e5ec;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #527083;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .toolbar-body {
+      display: grid;
+      gap: 7px;
+      padding: 0 10px 10px;
+    }
+
+    .map-toolbar.collapsed .toolbar-body {
+      display: none;
+    }
+
+    .tool-group {
+      display: grid;
+      gap: 5px;
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px;
+    }
+
+    .search-input {
+      min-width: 0;
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid #d8e5ec;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #2f4154;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: #1d8fb8;
+      box-shadow: 0 0 0 3px rgba(29, 143, 184, 0.12);
+    }
+
+    .search-status {
+      min-height: 16px;
+      color: #6a7b87;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .tool-label {
+      padding: 0 2px;
+      color: #385064;
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .tool-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tool-btn,
+    .panel-btn,
+    .legend-toggle {
+      min-height: 30px;
+      padding: 6px 10px;
+      border: 1px solid #d8e5ec;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #2f4154;
+      font-size: 13px;
+      line-height: 1.2;
+      cursor: pointer;
+      transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .tool-btn:hover,
+    .panel-btn:hover,
+    .legend-toggle:hover {
+      border-color: #61a8c7;
+      color: #0d5f7d;
+      background: #f0fbff;
+    }
+
+    .tool-btn.active,
+    .panel-btn.active {
+      border-color: #1d8fb8;
+      background: #e7f7fc;
+      color: #075c78;
+      font-weight: 760;
+      box-shadow: inset 0 0 0 1px rgba(29, 143, 184, 0.15);
+    }
+
+    .legend-card {
+      position: absolute;
+      right: 18px;
+      bottom: 24px;
+      z-index: 620;
+      width: 226px;
+      border: 1px solid rgba(210, 226, 232, 0.9);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    .legend-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      min-height: 38px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #0f2f47;
+      font-weight: 760;
+      text-align: left;
+    }
+
+    .legend-content {
+      display: grid;
+      gap: 8px;
+      padding: 0 12px 12px;
+    }
+
+    .legend-card.collapsed .legend-content {
+      display: none;
+    }
+
+    .legend-group-title {
+      margin: 2px 0 5px;
+      color: #6a7b87;
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+      color: #334155;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .legend-line {
+      width: 24px;
+      height: 4px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+
+    .legend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      border: 1px solid rgba(15, 23, 42, 0.24);
+      flex: 0 0 auto;
+    }
+
+    .legend-polygon {
+      width: 24px;
+      height: 12px;
+      border: 1px solid;
+      border-radius: 3px;
+      flex: 0 0 auto;
+    }
+
+    .side-panel {
+      height: 100vh;
+      overflow-y: auto;
+      border-left: 1px solid #d7e5eb;
+      background: linear-gradient(180deg, #fbfeff 0%, #f5faf8 100%);
+      padding: 20px 18px;
+      z-index: 5;
+    }
+
+    .panel-header {
+      padding-bottom: 14px;
+      border-bottom: 1px solid #dce9ee;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      color: #0f2f47;
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    .panel-header p {
+      margin: 8px 0 0;
+      color: #667784;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .panel-section {
+      margin-top: 18px;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .section-title h3 {
+      margin: 0;
+      color: #172033;
+      font-size: 15px;
+    }
+
+    .section-title span {
+      color: #7f909e;
+      font-size: 11px;
+    }
+
+    .recommend-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .panel-btn {
+      width: 100%;
+      text-align: center;
+    }
+
+    .route-detail {
+      min-height: 380px;
+      padding: 15px;
+      border: 1px solid #dce9ee;
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 7px 18px rgba(15, 23, 42, 0.05);
+    }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 260px;
+      color: #667784;
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .route-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 8px;
+      color: #0f2f47;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    .route-swatch {
+      width: 28px;
+      height: 5px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+
+    .node-sequence {
+      margin: 0 0 12px;
+      color: #476071;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .detail-line {
+      margin: 8px 0;
+      color: #526576;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .detail-line strong {
+      color: #172033;
+    }
+
+    .detail-block {
+      margin-top: 13px;
+      padding-top: 12px;
+      border-top: 1px solid #e4eef2;
+    }
+
+    .detail-block-title {
+      margin: 0 0 8px;
+      color: #0f2f47;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .stars {
+      color: #f5a524;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .metric {
+      min-height: 64px;
+      padding: 10px;
+      border: 1px solid #e3eef2;
+      border-radius: 8px;
+      background: #f8fcfd;
+    }
+
+    .metric strong {
+      display: block;
+      color: #0f2f47;
+      font-size: 19px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: #6a7b87;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .bar-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 60px minmax(0, 1fr) 34px;
+      gap: 8px;
+      align-items: center;
+      color: #526576;
+      font-size: 12px;
+    }
+
+    .bar-track {
+      height: 9px;
+      border-radius: 999px;
+      background: #e5eef2;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: #1d8fb8;
+    }
+
+    .note {
+      margin-top: 10px;
+      color: #7a8a96;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      padding-top: 13px;
+      border-top: 1px solid #dce9ee;
+      color: #7f909e;
+      font-size: 11px;
+      line-height: 1.65;
+    }
+
+    .leaflet-control-layers,
+    .leaflet-control-zoom {
+      border: 0 !important;
+      border-radius: 10px !important;
+      box-shadow: 0 7px 18px rgba(15, 23, 42, 0.14) !important;
+      font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      font-size: 12px;
+    }
+
+    .leaflet-control-zoom a {
+      border: 0 !important;
+    }
+
+    .leaflet-popup-content {
+      margin: 12px 14px;
+      font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .popup-title {
+      margin-bottom: 5px;
+      color: #0f2f47;
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .popup-tag {
+      display: inline-block;
+      margin-bottom: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #e7f7fc;
+      color: #075c78;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .node-label {
+      padding: 2px 5px;
+      border: 1px solid rgba(203, 213, 225, 0.9);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.86);
+      color: #172033;
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+    }
+
+    .leaflet-tooltip-top:before,
+    .leaflet-tooltip-bottom:before,
+    .leaflet-tooltip-left:before,
+    .leaflet-tooltip-right:before {
+      display: none;
+    }
+
+    @media (max-width: 1050px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 64vh 36vh;
+      }
+
+      .side-panel {
+        height: 36vh;
+        border-left: 0;
+        border-top: 1px solid #d7e5eb;
+      }
+
+      .map-toolbar {
+        top: 174px;
+        width: calc(100% - 36px);
+      }
+
+      .legend-card {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <main class="map-wrap">
+      <div id="map"></div>
+
+      <section class="title-card" aria-label="平台标题">
+        <h1>哈尔滨典型文旅游线导览与服务设施查询平台</h1>
+        <p>基于典型游线、服务范围与 POI 数据，辅助游客了解路线特点和周边服务设施分布。</p>
+      </section>
+
+      <section class="map-toolbar collapsed" aria-label="地图查询工具">
+        <div class="toolbar-head">
+          <span>地图筛选</span>
+          <button class="toolbar-toggle" id="map-filter-toggle" type="button">展开筛选</button>
+        </div>
+        <div class="toolbar-body">
+          <div class="tool-group">
+            <span class="tool-label">搜索</span>
+            <div class="search-row">
+              <input class="search-input" id="map-search" type="search" placeholder="搜索景点、餐饮、厕所、停车场或街区名称" />
+              <button class="tool-btn" id="search-btn" type="button">定位</button>
+            </div>
+            <div class="search-status" id="search-status">支持搜索景点名称、服务设施名称、设施类型或地址关键词。</div>
+          </div>
+          <div class="tool-group">
+            <span class="tool-label">周边服务</span>
+            <div class="tool-buttons">
+              <button class="tool-btn poi-btn active" data-poi="all">全部</button>
+              <button class="tool-btn poi-btn" data-poi="餐饮">餐饮</button>
+              <button class="tool-btn poi-btn" data-poi="住宿">住宿</button>
+              <button class="tool-btn poi-btn" data-poi="公共厕所">厕所</button>
+              <button class="tool-btn poi-btn" data-poi="公共交通">交通</button>
+              <button class="tool-btn poi-btn" data-poi="停车场">停车</button>
+              <button class="tool-btn poi-btn" data-poi="none">隐藏</button>
+            </div>
+          </div>
+          <div class="tool-group">
+            <span class="tool-label">服务范围</span>
+            <div class="tool-buttons">
+              <button class="tool-btn buffer-btn" data-buffer="500">步行可达</button>
+              <button class="tool-btn buffer-btn" data-buffer="1000">接驳范围</button>
+              <button class="tool-btn buffer-btn active" data-buffer="both">全部范围</button>
+              <button class="tool-btn buffer-btn" data-buffer="none">隐藏</button>
+            </div>
+          </div>
+          <div class="tool-group">
+            <span class="tool-label">路线范围</span>
+            <div class="tool-buttons">
+              <button class="tool-btn route-poi-btn" data-route-poi="all">全图 POI</button>
+              <button class="tool-btn route-poi-btn" data-route-poi="selected">当前路线 POI</button>
+              <button class="tool-btn" id="reset-map-btn" type="button">重置地图</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="legend-card collapsed" aria-label="地图图例">
+        <button class="legend-toggle" id="legend-toggle" type="button">
+          <span>图例</span>
+          <span id="legend-state">展开</span>
+        </button>
+        <div class="legend-content">
+          <div>
+            <div class="legend-group-title">典型游线</div>
+            <div class="legend-row"><span class="legend-line" style="background:#d81b60;"></span>L1 老城滨江步行游线</div>
+            <div class="legend-row"><span class="legend-line" style="background:#4f46e5;"></span>L2 松北冰雪体验游线</div>
+            <div class="legend-row"><span class="legend-line" style="background:#16a34a;"></span>L3 南岗文化休闲游线</div>
+          </div>
+          <div>
+            <div class="legend-group-title">服务范围</div>
+            <div class="legend-row"><span class="legend-polygon" style="background:rgba(254,215,170,0.55);border-color:#f97316;"></span>500 m 核心服务范围</div>
+            <div class="legend-row"><span class="legend-polygon" style="background:rgba(147,197,253,0.45);border-color:#2563eb;"></span>1000 m 拓展服务范围</div>
+          </div>
+          <div>
+            <div class="legend-group-title">服务设施 POI</div>
+            <div class="legend-row"><span class="legend-dot" style="background:#d81b60;"></span>餐饮</div>
+            <div class="legend-row"><span class="legend-dot" style="background:#8b5cf6;"></span>住宿</div>
+            <div class="legend-row"><span class="legend-dot" style="background:#2563eb;"></span>公共厕所</div>
+            <div class="legend-row"><span class="legend-dot" style="background:#65a30d;"></span>公共交通</div>
+            <div class="legend-row"><span class="legend-dot" style="background:#ea580c;"></span>停车场</div>
+            <div class="legend-row"><span class="legend-dot" style="background:#ffd500;"></span>文旅节点</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="side-panel">
+      <header class="panel-header">
+        <h2>路线导览</h2>
+        <p>点击地图路线或下方推荐按钮，查看路线特点、服务便利度与周边设施结构。</p>
+      </header>
+
+      <section class="panel-section">
+        <div class="section-title">
+          <h3>我想怎么逛？</h3>
+          <span>Route choice</span>
+        </div>
+        <div class="recommend-grid">
+          <button class="panel-btn recommend-btn" data-route="L1" data-reason="第一次来哈尔滨：地标集中，适合步行游览和城市印象建立。">第一次来哈尔滨</button>
+          <button class="panel-btn recommend-btn" data-route="L2" data-reason="冰雪主题游：连接太阳岛、极地公园、冰雪大世界，适合冰雪季专项游览。">冰雪主题游</button>
+          <button class="panel-btn recommend-btn" data-route="L3" data-reason="文化夜市游：串联省博、果戈里大街与师大夜市，适合文化参观和夜间消费结合。">文化夜市游</button>
+          <button class="panel-btn recommend-btn" data-route="L1" data-reason="服务最方便：L1 服务便利度最高，核心步行范围内基础服务较集中。">服务最方便</button>
+          <button class="panel-btn recommend-btn" data-route="L3" data-reason="设施最多：L3 在 1000 m 拓展服务范围内服务设施总量最高。">设施最多</button>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">
+          <h3>选中路线详情</h3>
+          <span id="selected-route-label">未选择</span>
+        </div>
+        <div class="route-detail" id="route-detail">
+          <div class="empty-state">
+            <div>
+              <strong>请选择一条游线或点击推荐按钮</strong><br>
+              地图会高亮路线，并在这里显示路线节点、适合人群、服务便利度和设施统计。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer-note">
+        本平台基于课程研究阶段采集的 POI 数据构建，主要用于文旅游线导览、服务设施空间查询与覆盖评价，不代表实时营业状态。
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const map = L.map('map', {
+      center: [45.765, 126.62],
+      zoom: 13,
+      preferCanvas: true,
+      zoomControl: false
+    });
+
+    map.createPane('bufferPane');
+    map.createPane('poiPane');
+    map.createPane('routePane');
+    map.createPane('nodePane');
+
+    map.getPane('bufferPane').style.zIndex = 350;
+    map.getPane('poiPane').style.zIndex = 450;
+    map.getPane('routePane').style.zIndex = 520;
+    map.getPane('nodePane').style.zIndex = 560;
+
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const routeColors = {
+      L1: '#d81b60',
+      L2: '#4f46e5',
+      L3: '#16a34a'
+    };
+
+    const poiColors = {
+      '餐饮': '#d81b60',
+      '住宿': '#8b5cf6',
+      '公共厕所': '#2563eb',
+      '公共交通': '#65a30d',
+      '停车场': '#ea580c'
+    };
+
+    const routeStats = {
+      L1: {
+        name: '老城滨江步行游线',
+        type: '老城步行型',
+        length: '2.895 km',
+        total500: 144,
+        total1000: 198,
+        match: '1.000',
+        convenience: 100,
+        stars: '★★★★★',
+        nodes: '圣·索菲亚教堂 - 中央大街 - 防洪纪念塔 - 松花江铁路大桥',
+        duration: '建议 2–3 小时，适合半日步行游',
+        audience: '第一次来哈尔滨、喜欢城市地标和步行游览的游客',
+        experience: '建筑打卡、滨江散步、中央大街消费',
+        service: '核心步行范围内餐饮、住宿、停车等设施较集中，临时查找服务点较方便。',
+        categories: {
+          '餐饮': 35,
+          '住宿': 40,
+          '公共厕所': 27,
+          '公共交通': 44,
+          '停车场': 52
+        }
+      },
+      L2: {
+        name: '松北冰雪体验游线',
+        type: '冰雪景区接驳型',
+        length: '4.443 km',
+        total500: 90,
+        total1000: 119,
+        match: '0.420',
+        convenience: 42,
+        stars: '★★★☆☆',
+        nodes: '太阳岛风景区 - 哈尔滨极地公园 - 哈尔滨冰雪大世界',
+        duration: '建议半日到一日游，适合结合接驳交通',
+        audience: '以冰雪大世界、太阳岛、极地公园为主要目的地的游客',
+        experience: '冰雪景观、亲子游览、跨区接驳',
+        service: '景区空间较分散，部分设施依赖接驳交通，建议提前规划停车和返程方式。',
+        categories: {
+          '餐饮': 28,
+          '住宿': 13,
+          '公共厕所': 30,
+          '公共交通': 18,
+          '停车场': 30
+        }
+      },
+      L3: {
+        name: '南岗文化休闲游线',
+        type: '文化休闲型',
+        length: '6.278 km',
+        total500: 119,
+        total1000: 265,
+        match: '0.645',
+        convenience: 64.5,
+        stars: '★★★★☆',
+        nodes: '果戈里大街 - 黑龙江省博物馆 - 师大夜市',
+        duration: '建议半日游，可延伸至夜间消费',
+        audience: '喜欢博物馆、街区漫游、夜市消费的游客',
+        experience: '文化参观、街区漫游、夜市消费',
+        service: '1000 m 范围内服务设施总量较高，适合文化参观和夜间消费结合。',
+        categories: {
+          '餐饮': 76,
+          '住宿': 44,
+          '公共厕所': 43,
+          '公共交通': 49,
+          '停车场': 53
+        }
+      }
+    };
+
+    const layerBuffer500 = L.layerGroup();
+    const layerBuffer1000 = L.layerGroup().addTo(map);
+    const layerPOI = L.layerGroup().addTo(map);
+    const layerRoutes = L.layerGroup().addTo(map);
+    const layerNodes = L.layerGroup().addTo(map);
+
+    const routeBounds = {};
+    const routeLayerById = {};
+    const allPoiLayers = [];
+    const allNodeLayers = [];
+    let selectedRouteId = null;
+    let selectedReason = '';
+    let currentPoiType = 'all';
+    let currentBufferMode = '1000';
+    let routePoiMode = 'all';
+    let fullBounds = null;
+
+    function escapeHTML(value) {
+      if (value === null || value === undefined) return '';
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    async function loadGeoJSON(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('无法加载：' + url);
+      return await response.json();
+    }
+
+    function getLineId(properties) {
+      return properties.line_id || properties.lineID || properties.id || '';
+    }
+
+    function getRouteIdFromValue(value) {
+      return String(value || '').match(/L[123]/)?.[0] || '';
+    }
+
+    function getRouteLabel(value) {
+      const id = getRouteIdFromValue(value);
+      return id && routeStats[id] ? `${id} ${routeStats[id].name}` : (value || '未标注');
+    }
+
+    function getPoiTip(type) {
+      if (type === '餐饮') return '可作为游览途中休息与消费点。';
+      if (type === '住宿') return '可作为游线周边停留住宿选择。';
+      if (type === '公共厕所') return '步行游览过程中的基础服务点。';
+      if (type === '公共交通') return '可作为换乘或接驳节点。';
+      if (type === '停车场') return '适合自驾游客停车参考。';
+      return '可作为沿线服务设施查询参考。';
+    }
+
+    function getRouteStyle(lineId) {
+      const isSelected = selectedRouteId === lineId;
+      const hasSelection = Boolean(selectedRouteId);
+      return {
+        color: routeColors[lineId] || '#ef4444',
+        weight: isSelected ? 8 : 5,
+        opacity: !hasSelection || isSelected ? 0.96 : 0.24,
+        lineCap: 'round',
+        lineJoin: 'round'
+      };
+    }
+
+    function refreshRouteStyles() {
+      Object.entries(routeLayerById).forEach(([lineId, layer]) => {
+        layer.setStyle(getRouteStyle(lineId));
+        if (lineId === selectedRouteId) layer.bringToFront();
+      });
+    }
+
+    function refreshPoiLayers() {
+      layerPOI.clearLayers();
+      if (currentPoiType === 'none') return;
+      allPoiLayers.forEach(layer => {
+        const p = layer.feature?.properties || {};
+        const type = p.poi_type || '其他';
+        const routeId = getRouteIdFromValue(p.collect_area);
+        const typeMatched = currentPoiType === 'all' || type === currentPoiType;
+        const routeMatched = routePoiMode !== 'selected' || !selectedRouteId || routeId === selectedRouteId;
+        if (typeMatched && routeMatched) {
+          layerPOI.addLayer(layer);
+        }
+      });
+      if (!map.hasLayer(layerPOI)) layerPOI.addTo(map);
+    }
+
+    function renderBars(stat) {
+      const maxValue = Math.max(...Object.values(stat.categories));
+      return Object.entries(stat.categories).map(([type, count]) => {
+        const width = maxValue ? (count / maxValue) * 100 : 0;
+        return `
+          <div class="bar-row">
+            <span>${escapeHTML(type)}</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${width}%;background:${poiColors[type] || '#1d8fb8'};"></div>
+            </div>
+            <strong>${count}</strong>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderRouteDetail(lineId, reason) {
+      const stat = routeStats[lineId];
+      const panel = document.getElementById('route-detail');
+      document.getElementById('selected-route-label').textContent = lineId;
+      panel.innerHTML = `
+        <h3 class="route-title">
+          <span class="route-swatch" style="background:${routeColors[lineId]};"></span>
+          ${escapeHTML(lineId)} ${escapeHTML(stat.name)}
+        </h3>
+        <div class="detail-block">
+          <h4 class="detail-block-title">路线简介</h4>
+          <p class="node-sequence">${escapeHTML(stat.nodes)}</p>
+          ${reason ? `<p class="detail-line"><strong>推荐说明：</strong>${escapeHTML(reason)}</p>` : ''}
+          <p class="detail-line"><strong>推荐时长：</strong>${escapeHTML(stat.duration)}</p>
+          <p class="detail-line"><strong>适合人群：</strong>${escapeHTML(stat.audience)}</p>
+          <p class="detail-line"><strong>推荐体验：</strong>${escapeHTML(stat.experience)}</p>
+          <p class="detail-line"><strong>服务便利度：</strong><span class="stars">${escapeHTML(stat.stars)}</span></p>
+        </div>
+        <div class="detail-block">
+          <h4 class="detail-block-title">服务设施统计</h4>
+        <div class="metric-grid">
+          <div class="metric"><strong>${escapeHTML(stat.length.replace(' km', ''))}</strong><span>线路长度/km</span></div>
+          <div class="metric"><strong>${stat.total500}</strong><span>500 m 范围设施总量</span></div>
+          <div class="metric"><strong>${stat.total1000}</strong><span>1000 m 范围设施总量</span></div>
+          <div class="metric"><strong>${escapeHTML(stat.match)}</strong><span>服务便利度指数</span></div>
+        </div>
+        <div class="bar-list">
+          ${renderBars(stat)}
+        </div>
+        <p class="note">服务便利度由设施密度标准化计算得到，数值用于路线服务支撑能力对比。</p>
+        </div>
+        <div class="detail-block">
+          <h4 class="detail-block-title">出行提示</h4>
+          <p class="detail-line">${escapeHTML(stat.service)}</p>
+          <p class="note">当前已优先显示该路线相关服务设施；如需查看全部点位，可点击“全图 POI”。</p>
+        </div>
+      `;
+    }
+
+    function selectRoute(lineId, reason = '', zoom = true) {
+      if (!routeStats[lineId]) return;
+      selectedRouteId = lineId;
+      selectedReason = reason;
+      renderRouteDetail(lineId, reason);
+      refreshRouteStyles();
+      setRoutePoiMode('selected');
+      document.querySelectorAll('.recommend-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.route === lineId && btn.dataset.reason === reason);
+      });
+      if (zoom && routeBounds[lineId] && routeBounds[lineId].isValid()) {
+        map.fitBounds(routeBounds[lineId], { padding: [70, 70] });
+      }
+    }
+
+    function setPoiFilter(type) {
+      currentPoiType = type;
+      document.querySelectorAll('.poi-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.poi === type);
+      });
+      refreshPoiLayers();
+    }
+
+    function setRoutePoiMode(mode) {
+      routePoiMode = mode;
+      document.querySelectorAll('.route-poi-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.routePoi === mode);
+      });
+      refreshPoiLayers();
+    }
+
+    function setBufferMode(mode) {
+      currentBufferMode = mode;
+      if (mode === '500') {
+        layerBuffer500.addTo(map);
+        map.removeLayer(layerBuffer1000);
+      } else if (mode === '1000') {
+        map.removeLayer(layerBuffer500);
+        layerBuffer1000.addTo(map);
+      } else if (mode === 'both') {
+        layerBuffer500.addTo(map);
+        layerBuffer1000.addTo(map);
+      } else {
+        map.removeLayer(layerBuffer500);
+        map.removeLayer(layerBuffer1000);
+      }
+      document.querySelectorAll('.buffer-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.buffer === mode);
+      });
+    }
+
+    function resetMap() {
+      selectedRouteId = null;
+      selectedReason = '';
+      routePoiMode = 'all';
+      document.getElementById('selected-route-label').textContent = '未选择';
+      document.getElementById('route-detail').innerHTML = `
+        <div class="empty-state">
+          <div>
+            <strong>请选择一条游线或点击推荐按钮</strong><br>
+            地图会高亮路线，并在这里显示路线节点、适合人群、服务便利度和设施统计。
+          </div>
+        </div>
+      `;
+      document.querySelectorAll('.recommend-btn').forEach(btn => btn.classList.remove('active'));
+      setPoiFilter('all');
+      setRoutePoiMode('all');
+      setBufferMode('1000');
+      refreshRouteStyles();
+      map.closePopup();
+      document.getElementById('map-search').value = '';
+      document.getElementById('search-status').textContent = '已恢复全图。支持搜索景点名称、服务设施名称、设施类型或地址关键词。';
+      if (fullBounds && fullBounds.isValid()) {
+        map.fitBounds(fullBounds, { padding: [35, 35] });
+      }
+    }
+
+    function searchFeatures() {
+      const input = document.getElementById('map-search');
+      const status = document.getElementById('search-status');
+      const keyword = input.value.trim().toLowerCase();
+      if (!keyword) {
+        status.textContent = '请输入关键词，例如“中央大街”“厕所”“停车场”。';
+        return;
+      }
+
+      const poiMatch = allPoiLayers.find(layer => {
+        const p = layer.feature?.properties || {};
+        return [p.poi_name, p.poi_type, p.poi_subtype, p.address, p.collect_area]
+          .some(value => String(value || '').toLowerCase().includes(keyword));
+      });
+
+      if (poiMatch) {
+        if (!map.hasLayer(layerPOI)) layerPOI.addTo(map);
+        setPoiFilter(poiMatch.feature?.properties?.poi_type || 'all');
+        setRoutePoiMode('all');
+        const latlng = poiMatch.getLatLng();
+        map.setView(latlng, 17);
+        poiMatch.openPopup();
+        status.textContent = `已定位到 POI：${poiMatch.feature?.properties?.poi_name || '服务设施'}`;
+        return;
+      }
+
+      const nodeMatch = allNodeLayers.find(layer => {
+        const p = layer.feature?.properties || {};
+        return [p.node_name, p.name, p.line_id, p.line_name, p.node_type, p.address]
+          .some(value => String(value || '').toLowerCase().includes(keyword));
+      });
+
+      if (nodeMatch) {
+        const p = nodeMatch.feature?.properties || {};
+        const lineId = getRouteIdFromValue(p.line_id || p.line_name);
+        if (lineId) {
+          selectRoute(lineId, `搜索定位到“${p.node_name || p.name || '文旅节点'}”，已同步显示所属路线。`, false);
+        }
+        const latlng = nodeMatch.getLatLng();
+        map.setView(latlng, 16);
+        nodeMatch.openPopup();
+        status.textContent = `已定位到节点：${p.node_name || p.name || '文旅节点'}`;
+        return;
+      }
+
+      status.textContent = '未找到匹配结果，请换一个关键词试试。';
+    }
+
+    Promise.all([
+      loadGeoJSON('./data/buffer_1000_wgs84.geojson'),
+      loadGeoJSON('./data/buffer_500_wgs84.geojson'),
+      loadGeoJSON('./data/poi_wgs84.geojson'),
+      loadGeoJSON('./data/routes_wgs84.geojson'),
+      loadGeoJSON('./data/nodes_wgs84.geojson')
+    ]).then(([buffer1000, buffer500, poi, routes, nodes]) => {
+      const buffer1000Layer = L.geoJSON(buffer1000, {
+        pane: 'bufferPane',
+        style: {
+          color: '#2563eb',
+          weight: 1,
+          fillColor: '#93c5fd',
+          fillOpacity: 0.13,
+          opacity: 0.45
+        },
+        onEachFeature(feature, layer) {
+          const p = feature.properties || {};
+          layer.bindPopup(`
+            <div class="popup-title">1000 m 拓展服务范围</div>
+            游线：${escapeHTML(getRouteLabel(p.line_id || p.line_name))}<br>
+            含义：适合短距离步行、公交、出租或景区接驳使用的服务设施。
+          `);
+        }
+      }).addTo(layerBuffer1000);
+
+      const buffer500Layer = L.geoJSON(buffer500, {
+        pane: 'bufferPane',
+        style: {
+          color: '#f97316',
+          weight: 1,
+          fillColor: '#fed7aa',
+          fillOpacity: 0.2,
+          opacity: 0.6
+        },
+        onEachFeature(feature, layer) {
+          const p = feature.properties || {};
+          layer.bindPopup(`
+            <div class="popup-title">500 m 核心服务范围</div>
+            游线：${escapeHTML(getRouteLabel(p.line_id || p.line_name))}<br>
+            含义：适合步行快速到达的沿线服务设施。
+          `);
+        }
+      }).addTo(layerBuffer500);
+
+      L.geoJSON(poi, {
+        pane: 'poiPane',
+        pointToLayer(feature, latlng) {
+          const p = feature.properties || {};
+          const type = p.poi_type || '其他';
+          const color = poiColors[type] || '#64748b';
+          return L.circleMarker(latlng, {
+            radius: 2.8,
+            fillColor: color,
+            color: '#ffffff',
+            weight: 0.6,
+            fillOpacity: 0.82,
+            opacity: 0.88
+          });
+        },
+        onEachFeature(feature, layer) {
+          const p = feature.properties || {};
+          const type = p.poi_type || '服务设施';
+          const subtype = p.poi_subtype || '未标注';
+          layer.bindPopup(`
+            <span class="popup-tag">${escapeHTML(type)}</span>
+            <div class="popup-title">${escapeHTML(p.poi_name || type)}</div>
+            类型 / 子类型：${escapeHTML(type)} / ${escapeHTML(subtype)}<br>
+            地址：${escapeHTML(p.address || '未标注')}<br>
+            所属采集区域：${escapeHTML(getRouteLabel(p.collect_area || '未标注'))}<br>
+            使用提示：${escapeHTML(getPoiTip(type))}
+          `);
+        }
+      }).eachLayer(layer => {
+        allPoiLayers.push(layer);
+      });
+      refreshPoiLayers();
+
+      const routeLayer = L.geoJSON(routes, {
+        pane: 'routePane',
+        style(feature) {
+          const lineId = getLineId(feature.properties || {});
+          return getRouteStyle(lineId);
+        },
+        onEachFeature(feature, layer) {
+          const p = feature.properties || {};
+          const lineId = getLineId(p);
+          const stat = routeStats[lineId] || {};
+          routeBounds[lineId] = layer.getBounds();
+          routeLayerById[lineId] = layer;
+
+          layer.bindPopup(`
+            <span class="popup-tag">典型游线</span>
+            <div class="popup-title">${escapeHTML(lineId)} ${escapeHTML(stat.name || p.line_name || '典型游线')}</div>
+            节点顺序：${escapeHTML(stat.nodes || '未标注')}<br>
+            适合人群：${escapeHTML(stat.audience || '游客')}<br>
+            服务便利度：${escapeHTML(stat.stars || '未统计')}（指数 ${escapeHTML(stat.match || '未统计')}）
+          `);
+
+          layer.on('click', () => {
+            selectRoute(lineId, `已选择 ${lineId} ${stat.name}，右侧显示该路线导览与服务设施统计。`);
+          });
+        }
+      }).addTo(layerRoutes);
+
+      L.geoJSON(nodes, {
+        pane: 'nodePane',
+        pointToLayer(feature, latlng) {
+          return L.circleMarker(latlng, {
+            radius: 5.4,
+            fillColor: '#ffd500',
+            color: '#172033',
+            weight: 1,
+            fillOpacity: 0.96
+          });
+        },
+        onEachFeature(feature, layer) {
+          const p = feature.properties || {};
+          const name = p.node_name || p.name || '文旅节点';
+          const lineId = getRouteIdFromValue(p.line_id || p.line_name);
+
+          layer.bindTooltip(escapeHTML(name), {
+            permanent: true,
+            direction: 'top',
+            offset: [0, -8],
+            className: 'node-label'
+          });
+
+          layer.bindPopup(`
+            <span class="popup-tag">文旅节点</span>
+            <div class="popup-title">${escapeHTML(name)}</div>
+            所属游线：${escapeHTML(getRouteLabel(p.line_id || p.line_name || '未标注'))}<br>
+            节点类型：${escapeHTML(p.node_type || '文旅节点')}<br>
+            游览提示：可结合地图上方筛选按钮查询周边餐饮、厕所、交通和停车等服务。
+          `);
+
+          layer.on('click', () => {
+            if (lineId) {
+              selectRoute(lineId, `已选择节点“${name}”所属的 ${lineId} ${routeStats[lineId].name}。`, false);
+            }
+          });
+        }
+      }).eachLayer(layer => {
+        allNodeLayers.push(layer);
+        layer.addTo(layerNodes);
+      });
+
+      fullBounds = buffer1000Layer.getBounds();
+      if (fullBounds.isValid()) {
+        map.fitBounds(fullBounds, { padding: [35, 35] });
+      } else if (routeLayer.getBounds().isValid()) {
+        fullBounds = routeLayer.getBounds();
+        map.fitBounds(fullBounds, { padding: [35, 35] });
+      }
+
+      setBufferMode('1000');
+      refreshRouteStyles();
+    }).catch(error => {
+      console.error(error);
+      alert('GeoJSON 数据加载失败，请检查 data 文件夹和文件名。');
+    });
+
+    document.querySelectorAll('.poi-btn').forEach(btn => {
+      btn.addEventListener('click', () => setPoiFilter(btn.dataset.poi));
+    });
+
+    document.querySelectorAll('.buffer-btn').forEach(btn => {
+      btn.addEventListener('click', () => setBufferMode(btn.dataset.buffer));
+    });
+
+    document.querySelectorAll('.route-poi-btn').forEach(btn => {
+      btn.addEventListener('click', () => setRoutePoiMode(btn.dataset.routePoi));
+    });
+
+    document.getElementById('search-btn').addEventListener('click', searchFeatures);
+    document.getElementById('map-search').addEventListener('keydown', event => {
+      if (event.key === 'Enter') searchFeatures();
+    });
+
+    document.getElementById('reset-map-btn').addEventListener('click', resetMap);
+
+    document.querySelectorAll('.recommend-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectRoute(btn.dataset.route, btn.dataset.reason);
+      });
+    });
+
+    document.getElementById('legend-toggle').addEventListener('click', () => {
+      const card = document.querySelector('.legend-card');
+      const isCollapsed = card.classList.toggle('collapsed');
+      document.getElementById('legend-state').textContent = isCollapsed ? '展开' : '收起';
+    });
+
+    document.getElementById('map-filter-toggle').addEventListener('click', () => {
+      const toolbar = document.querySelector('.map-toolbar');
+      const isCollapsed = toolbar.classList.toggle('collapsed');
+      document.getElementById('map-filter-toggle').textContent = isCollapsed ? '展开筛选' : '收起筛选';
+    });
+
+    const baseLayers = {
+      'OpenStreetMap 底图': osm
+    };
+
+    const overlayLayers = {
+      '文旅节点': layerNodes,
+      '典型游线': layerRoutes,
+      '服务设施 POI': layerPOI,
+      '500 m 核心服务范围': layerBuffer500,
+      '1000 m 拓展服务范围': layerBuffer1000
+    };
+
+    L.control.layers(baseLayers, overlayLayers, {
+      collapsed: true,
+      position: 'topright'
+    }).addTo(map);
+
+    L.control.zoom({
+      position: 'topright'
+    }).addTo(map);
+
+    L.control.scale({
+      metric: true,
+      imperial: false,
+      position: 'bottomleft'
+    }).addTo(map);
+  </script>
+</body>
+</html>
