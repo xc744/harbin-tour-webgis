@@ -3,12 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>哈尔滨典型文旅游线导览与服务设施查询平台</title>
+  <title>哈尔滨文旅游线导览平台</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
   <style>
+    :root {
+      --ink: #172033;
+      --ink-soft: #405060;
+      --muted: #6f7f89;
+      --line: rgba(203, 216, 222, 0.82);
+      --panel: rgba(255, 255, 255, 0.9);
+      --panel-solid: #ffffff;
+      --surface: #f6faf9;
+      --surface-2: #edf5f7;
+      --accent: #286b78;
+      --accent-soft: #e8f3f5;
+      --accent-line: #9bbfc7;
+      --shadow: 0 14px 40px rgba(23, 32, 51, 0.10);
+      --shadow-soft: 0 8px 24px rgba(23, 32, 51, 0.08);
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -16,17 +33,30 @@
     body {
       margin: 0;
       font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
-      background: #edf5f7;
-      color: #172033;
+      background: var(--surface-2);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
     }
 
     button {
       font-family: inherit;
     }
 
+    .icon {
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.8;
+      flex: 0 0 auto;
+    }
+
+    .icon-muted {
+      color: var(--muted);
+    }
+
     .app {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 370px;
+      grid-template-columns: minmax(0, 1fr) 380px;
       width: 100vw;
       height: 100vh;
       overflow: hidden;
@@ -36,7 +66,7 @@
       position: relative;
       min-width: 0;
       height: 100%;
-      background: #dbeaf0;
+      background: #dfe9eb;
     }
 
     #map {
@@ -50,45 +80,49 @@
       top: 18px;
       left: 18px;
       z-index: 650;
-      width: min(480px, calc(100% - 36px));
-      padding: 18px 20px;
-      border: 1px solid rgba(210, 226, 232, 0.9);
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.92);
-      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
-      backdrop-filter: blur(10px);
+      width: min(390px, calc(100% - 36px));
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px) saturate(1.1);
     }
 
     .title-card h1 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin: 0;
-      color: #0f2f47;
-      font-size: 22px;
-      line-height: 1.25;
-      font-weight: 760;
+      color: var(--ink);
+      font-size: 21px;
+      line-height: 1.24;
+      font-weight: 720;
+      white-space: nowrap;
     }
 
     .title-card p {
       display: -webkit-box;
-      margin: 8px 0 0;
+      margin: 6px 0 0;
       overflow: hidden;
-      color: #516273;
-      font-size: 13px;
-      line-height: 1.55;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
     }
 
     .map-toolbar {
       position: absolute;
-      top: 174px;
+      top: 108px;
       left: 18px;
       z-index: 640;
-      width: min(480px, calc(100% - 36px));
-      border: 1px solid rgba(210, 226, 232, 0.92);
+      width: min(390px, calc(100% - 36px));
+      border: 1px solid var(--line);
       border-radius: 12px;
-      background: rgba(255, 255, 255, 0.92);
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
-      backdrop-filter: blur(10px);
+      background: var(--panel);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px) saturate(1.1);
       overflow: hidden;
     }
 
@@ -97,31 +131,74 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 8px 11px 7px;
-      color: #0f2f47;
+      padding: 9px 12px 8px;
+      color: var(--ink);
       font-size: 14px;
-      font-weight: 760;
+      font-weight: 700;
+    }
+
+    .toolbar-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
     }
 
     .toolbar-toggle {
       min-height: 26px;
-      padding: 4px 9px;
-      border: 1px solid #d8e5ec;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
       border-radius: 999px;
-      background: #ffffff;
-      color: #527083;
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--ink-soft);
       font-size: 12px;
       cursor: pointer;
     }
 
+    .toolbar-toggle:hover {
+      border-color: var(--accent-line);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
     .toolbar-body {
       display: grid;
-      gap: 7px;
-      padding: 0 10px 10px;
+      gap: 10px;
+      padding: 0 12px 12px;
     }
 
     .map-toolbar.collapsed .toolbar-body {
       display: none;
+    }
+
+    .reset-control {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      display: block;
+      border: 0;
+      border-bottom: 1px solid #ccc;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.94);
+      color: var(--ink);
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 30px;
+      text-align: center;
+      text-decoration: none;
+      box-shadow: none;
+      cursor: pointer;
+    }
+
+    .reset-control:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .reset-leaflet-control {
+      border: 0 !important;
+      border-radius: 3px !important;
+      box-shadow: var(--shadow-soft) !important;
+      overflow: hidden;
     }
 
     .tool-group {
@@ -138,30 +215,30 @@
     .search-input {
       min-width: 0;
       height: 32px;
-      padding: 0 12px;
-      border: 1px solid #d8e5ec;
+      padding: 0 13px;
+      border: 1px solid var(--line);
       border-radius: 999px;
-      background: #ffffff;
-      color: #2f4154;
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--ink);
       font-size: 13px;
       outline: none;
     }
 
     .search-input:focus {
-      border-color: #1d8fb8;
-      box-shadow: 0 0 0 3px rgba(29, 143, 184, 0.12);
+      border-color: var(--accent-line);
+      box-shadow: 0 0 0 3px rgba(40, 107, 120, 0.12);
     }
 
     .search-status {
       min-height: 16px;
-      color: #6a7b87;
+      color: var(--muted);
       font-size: 11px;
       line-height: 1.35;
     }
 
     .tool-label {
       padding: 0 2px;
-      color: #385064;
+      color: var(--ink-soft);
       font-size: 12px;
       font-weight: 760;
       white-space: nowrap;
@@ -178,10 +255,14 @@
     .legend-toggle {
       min-height: 30px;
       padding: 6px 10px;
-      border: 1px solid #d8e5ec;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid var(--line);
       border-radius: 999px;
-      background: #ffffff;
-      color: #2f4154;
+      background: rgba(255, 255, 255, 0.76);
+      color: var(--ink-soft);
       font-size: 13px;
       line-height: 1.2;
       cursor: pointer;
@@ -191,18 +272,18 @@
     .tool-btn:hover,
     .panel-btn:hover,
     .legend-toggle:hover {
-      border-color: #61a8c7;
-      color: #0d5f7d;
-      background: #f0fbff;
+      border-color: var(--accent-line);
+      color: var(--accent);
+      background: var(--accent-soft);
     }
 
     .tool-btn.active,
     .panel-btn.active {
-      border-color: #1d8fb8;
-      background: #e7f7fc;
-      color: #075c78;
-      font-weight: 760;
-      box-shadow: inset 0 0 0 1px rgba(29, 143, 184, 0.15);
+      border-color: rgba(40, 107, 120, 0.42);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+      box-shadow: inset 0 0 0 1px rgba(40, 107, 120, 0.10);
     }
 
     .legend-card {
@@ -211,11 +292,11 @@
       bottom: 24px;
       z-index: 620;
       width: 226px;
-      border: 1px solid rgba(210, 226, 232, 0.9);
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.92);
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-      backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px) saturate(1.1);
       overflow: hidden;
     }
 
@@ -228,8 +309,8 @@
       border: 0;
       border-radius: 0;
       background: transparent;
-      color: #0f2f47;
-      font-weight: 760;
+      color: var(--ink);
+      font-weight: 700;
       text-align: left;
     }
 
@@ -245,9 +326,9 @@
 
     .legend-group-title {
       margin: 2px 0 5px;
-      color: #6a7b87;
+      color: var(--muted);
       font-size: 11px;
-      font-weight: 760;
+      font-weight: 700;
     }
 
     .legend-row {
@@ -255,7 +336,7 @@
       align-items: center;
       gap: 8px;
       margin: 4px 0;
-      color: #334155;
+      color: var(--ink-soft);
       font-size: 12px;
       line-height: 1.25;
     }
@@ -286,27 +367,31 @@
     .side-panel {
       height: 100vh;
       overflow-y: auto;
-      border-left: 1px solid #d7e5eb;
-      background: linear-gradient(180deg, #fbfeff 0%, #f5faf8 100%);
-      padding: 20px 18px;
+      border-left: 1px solid var(--line);
+      background: linear-gradient(180deg, #fbfdfd 0%, #f4f8f7 100%);
+      padding: 22px 20px;
       z-index: 5;
     }
 
     .panel-header {
-      padding-bottom: 14px;
-      border-bottom: 1px solid #dce9ee;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
     }
 
     .panel-header h2 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin: 0;
-      color: #0f2f47;
+      color: var(--ink);
       font-size: 20px;
       line-height: 1.35;
+      font-weight: 720;
     }
 
     .panel-header p {
       margin: 8px 0 0;
-      color: #667784;
+      color: var(--muted);
       font-size: 12px;
       line-height: 1.65;
     }
@@ -325,12 +410,13 @@
 
     .section-title h3 {
       margin: 0;
-      color: #172033;
+      color: var(--ink);
       font-size: 15px;
+      font-weight: 720;
     }
 
     .section-title span {
-      color: #7f909e;
+      color: var(--muted);
       font-size: 11px;
     }
 
@@ -347,18 +433,18 @@
 
     .route-detail {
       min-height: 380px;
-      padding: 15px;
-      border: 1px solid #dce9ee;
-      border-radius: 10px;
-      background: #ffffff;
-      box-shadow: 0 7px 18px rgba(15, 23, 42, 0.05);
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel-solid);
+      box-shadow: 0 10px 28px rgba(23, 32, 51, 0.05);
     }
 
     .empty-state {
       display: grid;
       place-items: center;
       min-height: 260px;
-      color: #667784;
+      color: var(--muted);
       text-align: center;
       font-size: 13px;
       line-height: 1.7;
@@ -369,7 +455,7 @@
       align-items: center;
       gap: 8px;
       margin: 0 0 8px;
-      color: #0f2f47;
+      color: var(--ink);
       font-size: 18px;
       line-height: 1.35;
     }
@@ -383,37 +469,37 @@
 
     .node-sequence {
       margin: 0 0 12px;
-      color: #476071;
+      color: var(--ink-soft);
       font-size: 13px;
       line-height: 1.65;
     }
 
     .detail-line {
       margin: 8px 0;
-      color: #526576;
+      color: var(--ink-soft);
       font-size: 12px;
       line-height: 1.65;
     }
 
     .detail-line strong {
-      color: #172033;
+      color: var(--ink);
     }
 
     .detail-block {
       margin-top: 13px;
       padding-top: 12px;
-      border-top: 1px solid #e4eef2;
+      border-top: 1px solid var(--line);
     }
 
     .detail-block-title {
       margin: 0 0 8px;
-      color: #0f2f47;
+      color: var(--ink);
       font-size: 13px;
       font-weight: 760;
     }
 
     .stars {
-      color: #f5a524;
+      color: #b8861f;
       font-weight: 800;
       letter-spacing: 0.02em;
     }
@@ -428,14 +514,14 @@
     .metric {
       min-height: 64px;
       padding: 10px;
-      border: 1px solid #e3eef2;
-      border-radius: 8px;
-      background: #f8fcfd;
+      border: 1px solid rgba(203, 216, 222, 0.7);
+      border-radius: 10px;
+      background: #f8fbfa;
     }
 
     .metric strong {
       display: block;
-      color: #0f2f47;
+      color: var(--ink);
       font-size: 19px;
       line-height: 1.1;
     }
@@ -443,7 +529,7 @@
     .metric span {
       display: block;
       margin-top: 6px;
-      color: #6a7b87;
+      color: var(--muted);
       font-size: 11px;
       line-height: 1.3;
     }
@@ -459,26 +545,26 @@
       grid-template-columns: 60px minmax(0, 1fr) 34px;
       gap: 8px;
       align-items: center;
-      color: #526576;
+      color: var(--ink-soft);
       font-size: 12px;
     }
 
     .bar-track {
       height: 9px;
       border-radius: 999px;
-      background: #e5eef2;
+      background: #e4ecee;
       overflow: hidden;
     }
 
     .bar-fill {
       height: 100%;
       border-radius: 999px;
-      background: #1d8fb8;
+      background: var(--accent);
     }
 
     .note {
       margin-top: 10px;
-      color: #7a8a96;
+      color: var(--muted);
       font-size: 11px;
       line-height: 1.6;
     }
@@ -486,8 +572,8 @@
     .footer-note {
       margin-top: 18px;
       padding-top: 13px;
-      border-top: 1px solid #dce9ee;
-      color: #7f909e;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
       font-size: 11px;
       line-height: 1.65;
     }
@@ -495,8 +581,8 @@
     .leaflet-control-layers,
     .leaflet-control-zoom {
       border: 0 !important;
-      border-radius: 10px !important;
-      box-shadow: 0 7px 18px rgba(15, 23, 42, 0.14) !important;
+      border-radius: 12px !important;
+      box-shadow: var(--shadow-soft) !important;
       font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
       font-size: 12px;
     }
@@ -514,7 +600,7 @@
 
     .popup-title {
       margin-bottom: 5px;
-      color: #0f2f47;
+      color: var(--ink);
       font-size: 14px;
       font-weight: 760;
     }
@@ -524,21 +610,25 @@
       margin-bottom: 6px;
       padding: 2px 7px;
       border-radius: 999px;
-      background: #e7f7fc;
-      color: #075c78;
+      background: var(--accent-soft);
+      color: var(--accent);
       font-size: 11px;
       font-weight: 700;
     }
 
     .node-label {
       padding: 2px 5px;
-      border: 1px solid rgba(203, 213, 225, 0.9);
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.86);
-      color: #172033;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ink);
       font-size: 11px;
       font-weight: 700;
-      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+      box-shadow: 0 5px 14px rgba(23, 32, 51, 0.10);
+    }
+
+    .leaflet-tooltip {
+      pointer-events: none;
     }
 
     .leaflet-tooltip-top:before,
@@ -561,12 +651,39 @@
       }
 
       .map-toolbar {
-        top: 174px;
-        width: calc(100% - 36px);
+        top: 108px;
+        width: min(390px, calc(100% - 36px));
       }
 
       .legend-card {
         display: none;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .title-card {
+        width: calc(100% - 28px);
+        top: 14px;
+        left: 14px;
+        padding: 12px 14px;
+      }
+
+      .title-card h1 {
+        font-size: 18px;
+      }
+
+      .map-toolbar {
+        top: 104px;
+        left: 14px;
+        width: calc(100% - 28px);
+      }
+
+      .side-panel {
+        padding: 16px 14px;
+      }
+
+      .recommend-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -578,21 +695,21 @@
       <div id="map"></div>
 
       <section class="title-card" aria-label="平台标题">
-        <h1>哈尔滨典型文旅游线导览与服务设施查询平台</h1>
-        <p>基于典型游线、服务范围与 POI 数据，辅助游客了解路线特点和周边服务设施分布。</p>
+        <h1><i data-lucide="map" class="icon"></i>哈尔滨文旅游线导览平台</h1>
+        <p>基于典型游线与 POI 数据，查询路线特点和周边服务设施。</p>
       </section>
 
       <section class="map-toolbar collapsed" aria-label="地图查询工具">
         <div class="toolbar-head">
-          <span>地图筛选</span>
+          <span class="toolbar-title"><i data-lucide="sliders-horizontal" class="icon"></i>地图筛选</span>
           <button class="toolbar-toggle" id="map-filter-toggle" type="button">展开筛选</button>
         </div>
         <div class="toolbar-body">
           <div class="tool-group">
             <span class="tool-label">搜索</span>
             <div class="search-row">
-              <input class="search-input" id="map-search" type="search" placeholder="搜索景点、餐饮、厕所、停车场或街区名称" />
-              <button class="tool-btn" id="search-btn" type="button">定位</button>
+              <input class="search-input" id="map-search" type="search" placeholder="搜索景点、餐饮、厕所、停车场或交通站点名称" />
+              <button class="tool-btn" id="search-btn" type="button"><i data-lucide="search" class="icon"></i>定位</button>
             </div>
             <div class="search-status" id="search-status">支持搜索景点名称、服务设施名称、设施类型或地址关键词。</div>
           </div>
@@ -622,7 +739,6 @@
             <div class="tool-buttons">
               <button class="tool-btn route-poi-btn" data-route-poi="all">全图 POI</button>
               <button class="tool-btn route-poi-btn" data-route-poi="selected">当前路线 POI</button>
-              <button class="tool-btn" id="reset-map-btn" type="button">重置地图</button>
             </div>
           </div>
         </div>
@@ -630,7 +746,7 @@
 
       <section class="legend-card collapsed" aria-label="地图图例">
         <button class="legend-toggle" id="legend-toggle" type="button">
-          <span>图例</span>
+          <span class="toolbar-title"><i data-lucide="layers" class="icon"></i>图例</span>
           <span id="legend-state">展开</span>
         </button>
         <div class="legend-content">
@@ -660,7 +776,7 @@
 
     <aside class="side-panel">
       <header class="panel-header">
-        <h2>路线导览</h2>
+        <h2><i data-lucide="route" class="icon"></i>路线导览</h2>
         <p>点击地图路线或下方推荐按钮，查看路线特点、服务便利度与周边设施结构。</p>
       </header>
 
@@ -672,7 +788,7 @@
         <div class="recommend-grid">
           <button class="panel-btn recommend-btn" data-route="L1" data-reason="第一次来哈尔滨：地标集中，适合步行游览和城市印象建立。">第一次来哈尔滨</button>
           <button class="panel-btn recommend-btn" data-route="L2" data-reason="冰雪主题游：连接太阳岛、极地公园、冰雪大世界，适合冰雪季专项游览。">冰雪主题游</button>
-          <button class="panel-btn recommend-btn" data-route="L3" data-reason="文化夜市游：串联省博、果戈里大街与师大夜市，适合文化参观和夜间消费结合。">文化夜市游</button>
+          <button class="panel-btn recommend-btn" data-route="L3" data-reason="文化休闲游：串联省博、果戈里大街与师大夜市，适合文化参观和夜间消费结合。">文化休闲游</button>
           <button class="panel-btn recommend-btn" data-route="L1" data-reason="服务最方便：L1 服务便利度最高，核心步行范围内基础服务较集中。">服务最方便</button>
           <button class="panel-btn recommend-btn" data-route="L3" data-reason="设施最多：L3 在 1000 m 拓展服务范围内服务设施总量最高。">设施最多</button>
         </div>
@@ -713,9 +829,12 @@
     map.createPane('nodePane');
 
     map.getPane('bufferPane').style.zIndex = 350;
-    map.getPane('poiPane').style.zIndex = 450;
+    map.getPane('poiPane').style.zIndex = 570;
     map.getPane('routePane').style.zIndex = 520;
-    map.getPane('nodePane').style.zIndex = 560;
+    map.getPane('nodePane').style.zIndex = 590;
+
+    const poiRenderer = L.svg({ pane: 'poiPane' });
+    const nodeRenderer = L.svg({ pane: 'nodePane' });
 
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -747,7 +866,7 @@
         convenience: 100,
         stars: '★★★★★',
         nodes: '圣·索菲亚教堂 - 中央大街 - 防洪纪念塔 - 松花江铁路大桥',
-        duration: '建议 2–3 小时，适合半日步行游',
+        duration: '建议半日到一日，适合步行游',
         audience: '第一次来哈尔滨、喜欢城市地标和步行游览的游客',
         experience: '建筑打卡、滨江散步、中央大街消费',
         service: '核心步行范围内餐饮、住宿、停车等设施较集中，临时查找服务点较方便。',
@@ -1127,12 +1246,14 @@
           const type = p.poi_type || '其他';
           const color = poiColors[type] || '#64748b';
           return L.circleMarker(latlng, {
-            radius: 2.8,
+            renderer: poiRenderer,
+            radius: 4,
             fillColor: color,
             color: '#ffffff',
             weight: 0.6,
             fillOpacity: 0.82,
-            opacity: 0.88
+            opacity: 0.88,
+            bubblingMouseEvents: false
           });
         },
         onEachFeature(feature, layer) {
@@ -1149,6 +1270,7 @@
           `);
         }
       }).eachLayer(layer => {
+        layer.bringToFront();
         allPoiLayers.push(layer);
       });
       refreshPoiLayers();
@@ -1171,7 +1293,7 @@
             <div class="popup-title">${escapeHTML(lineId)} ${escapeHTML(stat.name || p.line_name || '典型游线')}</div>
             节点顺序：${escapeHTML(stat.nodes || '未标注')}<br>
             适合人群：${escapeHTML(stat.audience || '游客')}<br>
-            服务便利度：${escapeHTML(stat.stars || '未统计')}（指数 ${escapeHTML(stat.match || '未统计')}）
+            服务便利度：${escapeHTML(stat.stars || '未统计')}（匹配度指数 ${escapeHTML(stat.match || '未统计')}）
           `);
 
           layer.on('click', () => {
@@ -1184,11 +1306,13 @@
         pane: 'nodePane',
         pointToLayer(feature, latlng) {
           return L.circleMarker(latlng, {
+            renderer: nodeRenderer,
             radius: 5.4,
             fillColor: '#ffd500',
             color: '#172033',
             weight: 1,
-            fillOpacity: 0.96
+            fillOpacity: 0.96,
+            bubblingMouseEvents: false
           });
         },
         onEachFeature(feature, layer) {
@@ -1254,8 +1378,6 @@
       if (event.key === 'Enter') searchFeatures();
     });
 
-    document.getElementById('reset-map-btn').addEventListener('click', resetMap);
-
     document.querySelectorAll('.recommend-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         selectRoute(btn.dataset.route, btn.dataset.reason);
@@ -1291,6 +1413,21 @@
       position: 'topright'
     }).addTo(map);
 
+    const resetControl = L.control({ position: 'topright' });
+    resetControl.onAdd = function() {
+      const container = L.DomUtil.create('div', 'leaflet-bar reset-leaflet-control');
+      const button = L.DomUtil.create('button', 'reset-control', container);
+      button.id = 'reset-map-btn';
+      button.type = 'button';
+      button.title = '重置地图';
+      button.setAttribute('aria-label', '重置地图');
+      button.textContent = '↺';
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.on(button, 'click', resetMap);
+      return container;
+    };
+    resetControl.addTo(map);
+
     L.control.zoom({
       position: 'topright'
     }).addTo(map);
@@ -1300,6 +1437,10 @@
       imperial: false,
       position: 'bottomleft'
     }).addTo(map);
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
   </script>
 </body>
 </html>
