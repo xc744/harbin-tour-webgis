@@ -251,8 +251,7 @@
     }
 
     .tool-btn,
-    .panel-btn,
-    .legend-toggle {
+    .panel-btn {
       min-height: 30px;
       padding: 6px 10px;
       display: inline-flex;
@@ -270,8 +269,7 @@
     }
 
     .tool-btn:hover,
-    .panel-btn:hover,
-    .legend-toggle:hover {
+    .panel-btn:hover {
       border-color: var(--accent-line);
       color: var(--accent);
       background: var(--accent-soft);
@@ -306,12 +304,22 @@
       align-items: center;
       width: 100%;
       min-height: 38px;
+      padding: 6px 10px;
       border: 0;
       border-radius: 0;
       background: transparent;
       color: var(--ink);
+      font-size: 13px;
+      line-height: 1.2;
       font-weight: 700;
       text-align: left;
+      cursor: pointer;
+      transition: background 0.16s ease, color 0.16s ease;
+    }
+
+    .legend-toggle:hover {
+      color: var(--accent);
+      background: var(--accent-soft);
     }
 
     .legend-content {
@@ -729,8 +737,8 @@
             <span class="tool-label">服务范围</span>
             <div class="tool-buttons">
               <button class="tool-btn buffer-btn" data-buffer="500">步行可达</button>
-              <button class="tool-btn buffer-btn" data-buffer="1000">接驳范围</button>
-              <button class="tool-btn buffer-btn active" data-buffer="both">全部范围</button>
+              <button class="tool-btn buffer-btn active" data-buffer="1000">接驳范围</button>
+              <button class="tool-btn buffer-btn" data-buffer="both">全部范围</button>
               <button class="tool-btn buffer-btn" data-buffer="none">隐藏</button>
             </div>
           </div>
@@ -925,8 +933,8 @@
     };
 
     const layerBuffer500 = L.layerGroup();
-    const layerBuffer1000 = L.layerGroup().addTo(map);
-    const layerPOI = L.layerGroup().addTo(map);
+    const layerBuffer1000 = L.layerGroup();
+    const layerPOI = L.layerGroup();
     const layerRoutes = L.layerGroup().addTo(map);
     const layerNodes = L.layerGroup().addTo(map);
 
@@ -935,9 +943,7 @@
     const allPoiLayers = [];
     const allNodeLayers = [];
     let selectedRouteId = null;
-    let selectedReason = '';
     let currentPoiType = 'all';
-    let currentBufferMode = '1000';
     let routePoiMode = 'all';
     let fullBounds = null;
 
@@ -1072,7 +1078,6 @@
     function selectRoute(lineId, reason = '', zoom = true) {
       if (!routeStats[lineId]) return;
       selectedRouteId = lineId;
-      selectedReason = reason;
       renderRouteDetail(lineId, reason);
       refreshRouteStyles();
       setRoutePoiMode('selected');
@@ -1101,7 +1106,6 @@
     }
 
     function setBufferMode(mode) {
-      currentBufferMode = mode;
       if (mode === '500') {
         layerBuffer500.addTo(map);
         map.removeLayer(layerBuffer1000);
@@ -1122,7 +1126,6 @@
 
     function resetMap() {
       selectedRouteId = null;
-      selectedReason = '';
       routePoiMode = 'all';
       document.getElementById('selected-route-label').textContent = '未选择';
       document.getElementById('route-detail').innerHTML = `
