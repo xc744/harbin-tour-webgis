@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
 
   <style>
     :root {
@@ -570,6 +571,49 @@
       background: var(--accent);
     }
 
+    .radar-card {
+      margin-top: 10px;
+      padding: 10px 8px 8px;
+      border: 1px solid rgba(203, 216, 222, 0.7);
+      border-radius: 12px;
+      background: #f8fbfa;
+    }
+
+    .radar-chart {
+      width: 100%;
+      height: 220px;
+    }
+
+    .radar-caption {
+      margin: 6px 2px 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .radar-legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 4px 2px 0;
+    }
+
+    .radar-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--ink-soft);
+      font-size: 11px;
+    }
+
+    .radar-chip::before {
+      content: "";
+      width: 14px;
+      height: 3px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
     .note {
       margin-top: 10px;
       color: var(--muted);
@@ -785,7 +829,7 @@
     <aside class="side-panel">
       <header class="panel-header">
         <h2><i data-lucide="route" class="icon"></i>路线导览</h2>
-        <p>点击地图路线或下方推荐按钮，查看路线特点、服务便利度与周边设施结构。</p>
+        <p>点击地图路线或下方推荐按钮，查看路线特点、服务便利度、周边设施结构与设施均衡度。</p>
       </header>
 
       <section class="panel-section">
@@ -811,7 +855,7 @@
           <div class="empty-state">
             <div>
               <strong>请选择一条游线或点击推荐按钮</strong><br>
-              地图会高亮路线，并在这里显示路线节点、适合人群、服务便利度和设施统计。
+              地图会高亮路线，并在这里显示路线节点、适合人群、服务便利度、设施统计和均衡度雷达图。
             </div>
           </div>
         </div>
@@ -878,6 +922,13 @@
         audience: '第一次来哈尔滨、喜欢城市地标和步行游览的游客',
         experience: '建筑打卡、滨江散步、中央大街消费',
         service: '核心步行范围内餐饮、住宿、停车等设施较集中，临时查找服务点较方便。',
+        standardized: {
+          '餐饮': 0.999,
+          '住宿': 1.000,
+          '公共厕所': 1.000,
+          '公共交通': 1.000,
+          '停车场': 1.000
+        },
         categories: {
           '餐饮': 35,
           '住宿': 40,
@@ -900,6 +951,13 @@
         audience: '以冰雪大世界、太阳岛、极地公园为主要目的地的游客',
         experience: '冰雪景观、亲子游览、跨区接驳',
         service: '景区空间较分散，部分设施依赖接驳交通，建议提前规划停车和返程方式。',
+        standardized: {
+          '餐饮': 0.521,
+          '住宿': 0.212,
+          '公共厕所': 0.724,
+          '公共交通': 0.267,
+          '停车场': 0.376
+        },
         categories: {
           '餐饮': 28,
           '住宿': 13,
@@ -922,6 +980,13 @@
         audience: '喜欢博物馆、街区漫游、夜市消费的游客',
         experience: '文化参观、街区漫游、夜市消费',
         service: '1000 m 范围内服务设施总量较高，适合文化参观和夜间消费结合。',
+        standardized: {
+          '餐饮': 1.000,
+          '住宿': 0.507,
+          '公共厕所': 0.734,
+          '公共交通': 0.514,
+          '停车场': 0.470
+        },
         categories: {
           '餐饮': 76,
           '住宿': 44,
@@ -946,6 +1011,7 @@
     let currentPoiType = 'all';
     let routePoiMode = 'all';
     let fullBounds = null;
+    let balanceRadarChart = null;
 
     function escapeHTML(value) {
       if (value === null || value === undefined) return '';
@@ -1036,6 +1102,89 @@
       }).join('');
     }
 
+    function renderBalanceRadar(selectedLineId) {
+      const container = document.getElementById('balance-radar');
+      if (!container) return;
+
+      if (!window.echarts) {
+        container.innerHTML = '<div class="note">雷达图组件加载失败，请检查网络连接。</div>';
+        return;
+      }
+
+      if (balanceRadarChart) {
+        balanceRadarChart.dispose();
+        balanceRadarChart = null;
+      }
+
+      const dimensions = ['餐饮', '住宿', '公共厕所', '公共交通', '停车场'];
+      const indicators = dimensions.map(name => ({ name, max: 1 }));
+      const lineIds = ['L1', 'L2', 'L3'];
+
+      const seriesData = lineIds.map(lineId => {
+        const stat = routeStats[lineId];
+        const active = lineId === selectedLineId;
+        return {
+          name: `${lineId} ${stat.name}`,
+          value: dimensions.map(key => stat.standardized[key]),
+          lineStyle: {
+            width: active ? 3 : 1.5,
+            opacity: active ? 0.95 : 0.45
+          },
+          areaStyle: {
+            opacity: active ? 0.18 : 0.06
+          },
+          symbolSize: active ? 4 : 2
+        };
+      });
+
+      balanceRadarChart = echarts.init(container);
+      balanceRadarChart.setOption({
+        color: lineIds.map(lineId => routeColors[lineId]),
+        tooltip: {
+          trigger: 'item',
+          formatter(params) {
+            const values = params.value || [];
+            const rows = dimensions
+              .map((name, index) => `${name}：${Number(values[index]).toFixed(3)}`)
+              .join('<br>');
+            return `<strong>${params.name}</strong><br>${rows}`;
+          }
+        },
+        legend: {
+          show: false
+        },
+        radar: {
+          center: ['50%', '45%'],
+          radius: '62%',
+          indicator: indicators,
+          splitNumber: 4,
+          axisName: {
+            color: '#405060',
+            fontSize: 11
+          },
+          splitLine: {
+            lineStyle: {
+              color: 'rgba(111, 127, 137, 0.22)'
+            }
+          },
+          splitArea: {
+            areaStyle: {
+              color: ['rgba(40,107,120,0.03)', 'rgba(40,107,120,0.07)']
+            }
+          },
+          axisLine: {
+            lineStyle: {
+              color: 'rgba(111, 127, 137, 0.28)'
+            }
+          }
+        },
+        series: [{
+          type: 'radar',
+          data: seriesData
+        }]
+      });
+    }
+
     function renderRouteDetail(lineId, reason) {
       const stat = routeStats[lineId];
       const panel = document.getElementById('route-detail');
@@ -1065,6 +1214,16 @@
         <div class="bar-list">
           ${renderBars(stat)}
         </div>
+        <div class="radar-card">
+          <h4 class="detail-block-title">设施均衡度雷达图</h4>
+          <div id="balance-radar" class="radar-chart" aria-label="设施均衡度雷达图"></div>
+          <div class="radar-legend-row">
+            <span class="radar-chip" style="color:${routeColors.L1};">L1</span>
+            <span class="radar-chip" style="color:${routeColors.L2};">L2</span>
+            <span class="radar-chip" style="color:${routeColors.L3};">L3</span>
+          </div>
+          <p class="radar-caption">雷达图基于五类服务设施单位长度密度标准化值绘制，数值越接近外圈，表示该类设施相对配置水平越高。</p>
+        </div>
         <p class="note">服务便利度由设施密度标准化计算得到，数值用于路线服务支撑能力对比。</p>
         </div>
         <div class="detail-block">
@@ -1073,6 +1232,7 @@
           <p class="note">当前已优先显示该路线相关服务设施；如需查看全部点位，可点击“全图 POI”。</p>
         </div>
       `;
+      requestAnimationFrame(() => renderBalanceRadar(lineId));
     }
 
     function selectRoute(lineId, reason = '', zoom = true) {
@@ -1127,12 +1287,16 @@
     function resetMap() {
       selectedRouteId = null;
       routePoiMode = 'all';
+      if (balanceRadarChart) {
+        balanceRadarChart.dispose();
+        balanceRadarChart = null;
+      }
       document.getElementById('selected-route-label').textContent = '未选择';
       document.getElementById('route-detail').innerHTML = `
         <div class="empty-state">
           <div>
             <strong>请选择一条游线或点击推荐按钮</strong><br>
-            地图会高亮路线，并在这里显示路线节点、适合人群、服务便利度和设施统计。
+            地图会高亮路线，并在这里显示路线节点、适合人群、服务便利度、设施统计和均衡度雷达图。
           </div>
         </div>
       `;
@@ -1440,6 +1604,10 @@
       imperial: false,
       position: 'bottomleft'
     }).addTo(map);
+
+    window.addEventListener('resize', () => {
+      if (balanceRadarChart) balanceRadarChart.resize();
+    });
 
     if (window.lucide) {
       window.lucide.createIcons();
